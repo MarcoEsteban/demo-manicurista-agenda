@@ -1,0 +1,21 @@
+{
+  "name": "demo-manicurista-agenda",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Agenda de reservas para manicurista con panel admin sobre Google Apps Script y Sheets",
+  "scripts": {
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "watch": "clasp push --watch",
+    "logs": "clasp tail-logs --watch",
+    "open": "clasp open-script",
+    "deploy": "node scripts/deploy.mjs",
+    "check": "node --check src/Codigo.js",
+    "test": "TZ=America/Argentina/Buenos_Aires node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.4.1",
+    "@types/google-apps-script": "^2.0.13"
+  }
+}

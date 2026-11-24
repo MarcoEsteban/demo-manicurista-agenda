@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title><?= cfg.negocio_nombre ?> · Reservas</title>
+  <base target="_top">
+  <?!= include('EstiloBase'); ?>
+  <style>
+    :root {
+      --color-primario: <?= cfg.color_primario || '#4A1F3D' ?>;
+      --color-secundario: <?= cfg.color_secundario || '#C9A227' ?>;
+      --color-acento: <?= cfg.color_acento || '#E8DCC8' ?>;
+      --color-texto: <?= cfg.color_texto || '#1A1A1A' ?>;
+    }
+  </style>
+
+  <!-- ===== Meta tags "PWA-lite" =====
+       Ver README.md — dentro del wrapper de script.google.com esto NO logra
+       un banner de instalación automática de Chrome (falta Service Worker
+       registrable), pero sí permite "Agregar a pantalla de inicio" manual
+       con ícono y nombre propios, y modo standalone en iOS Safari. -->
+  <meta name="theme-color" content="<?= cfg.color_primario || '#4A1F3D' ?>">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="<?= cfg.negocio_nombre ?>">
+  <? if (icono) { ?>
+  <link rel="apple-touch-icon" href="data:image/png;base64,<?= icono ?>">
+  <link rel="icon" href="data:image/png;base64,<?= icono ?>">
+  <? } ?>
+  <link rel="manifest" href="<?= scriptUrl ?>?manifest=1">
+</head>
+<body>
+
+  <div class="encabezado">
+    <h1><?= cfg.negocio_nombre ?></h1>
+    <div class="subt" id="subtitulo">Reserva tu hora online</div>
+    <div class="pasos">
+      <div class="paso-punto" data-paso="1"></div>
+      <div class="paso-punto" data-paso="2"></div>
+      <div class="paso-punto" data-paso="3"></div>
+      <div class="paso-punto" data-paso="4"></div>
+      <div class="paso-punto" data-paso="5"></div>
+    </div>
+  </div>
+
+  <div class="contenedor">
+
+    <!-- Paso 0: cargando datos iniciales -->
+    <div id="vistaCargando" class="centro mt-24">
+      <span class="cargando" style="color:var(--color-primario); width:26px; height:26px;"></span>
+      <p class="texto-tenue mt-16">Cargando disponibilidad…</p>
+    </div>
+
+    <!-- Paso 1: elegir servicio -->
+    <section id="paso1" class="oculto mt-16">
+      <h2>¿Qué necesitas?</h2>
+      <p class="texto-tenue mt-8" style="margin-bottom:16px;">Elige un servicio para ver disponibilidad</p>
+      <div id="listaServicios"></div>
+    </section>
+
+    <!-- Paso 2: elegir especialista -->
+    <section id="paso2" class="oculto mt-16">
+      <h2 id="tituloEspecialista">Elige especialista</h2>
+      <p class="texto-tenue mt-8" style="margin-bottom:16px;">¿Con quién prefieres tu cita?</p>
+      <div id="listaEspecialistas"></div>
+    </section>
+
+    <!-- Paso 3: calendario -->
+    <section id="paso3" class="oculto mt-16">
+      <h2>Elige el día</h2>
+      <div class="tarjeta mt-16">
+        <div class="calendario__nav">
+          <button type="button" class="calendario__flecha" id="btnMesAnterior" aria-label="Mes anterior">‹</button>
+          <span class="calendario__mes" id="calMesLabel">—</span>
+          <button type="button" class="calendario__flecha" id="btnMesSiguiente" aria-label="Mes siguiente">›</button>
+        </div>
+        <div class="calendario__grilla-cabecera">
+          <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+        </div>
+        <div class="calendario__grilla" id="calGrilla"></div>
+        <p class="texto-tenue mt-16 mb-0" id="calEstado" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- Paso 4: elegir hora -->
+    <section id="paso4" class="oculto mt-16">
+      <h2>Elige la hora</h2>
+      <p class="texto-tenue mt-8" id="fechaElegidaTexto" style="margin-bottom:16px;"></p>
+      <div class="chips" id="listaHoras"></div>
+    </section>
+
+    <!-- Paso 5: datos del cliente -->
+    <section id="paso5" class="oculto mt-16">
+      <h2>Tus datos</h2>
+
+      <div class="tarjeta mt-16" id="resumenTarjeta"></div>
+
+      <div class="tarjeta mt-16 oculto" id="fidelidadTarjeta" role="status" aria-live="polite"></div>
+
+      <div class="mt-16">
+        <div class="campo">
+          <label for="inNombre">Nombre y apellido</label>
+          <input type="text" id="inNombre" placeholder="Ej: Juan Pérez" autocomplete="name">
+        </div>
+        <div class="campo">
+          <label for="inTelefonoLocal">WhatsApp</label>
+          <div class="campo-tel">
+            <select id="inPais" aria-label="Código de país del WhatsApp"></select>
+            <input type="tel" id="inTelefonoLocal" placeholder="Ej: 71234567" inputmode="numeric" autocomplete="tel-national">
+          </div>
+          <p class="campo__ayuda">Elegí tu país e ingresá solo tu número local.</p>
+        </div>
+        <div class="campo">
+          <label for="inEmail">Email (opcional)</label>
+          <input type="email" id="inEmail" placeholder="tu@email.com" autocomplete="email">
+        </div>
+        <div class="campo">
+          <label for="inNotas">Notas (opcional)</label>
+          <textarea id="inNotas" placeholder="Alguna preferencia o comentario…"></textarea>
+        </div>
+
+        <div class="campo" id="campoPago">
+          <label>Forma de pago</label>
+          <div class="pago-opciones">
+            <label class="pago-opcion" id="opcionPagoEfectivo">
+              <input type="radio" name="metodoPago" value="efectivo">
+              <span class="pago-opcion__texto">
+                <span class="pago-opcion__titulo">Efectivo en el local</span>
+                <span class="pago-opcion__detalle">Pagás cuando llegás</span>
+              </span>
+            </label>
+            <label class="pago-opcion" id="opcionPagoQr">
+              <input type="radio" name="metodoPago" value="qr">
+              <span class="pago-opcion__texto">
+                <span class="pago-opcion__titulo">Pago por QR</span>
+                <span class="pago-opcion__detalle">Transferís y enviás el comprobante</span>
+              </span>
+            </label>
+          </div>
+          <div id="pagoDetalle" class="pago-detalle oculto"></div>
+        </div>
+      </div>
+      <p class="texto-tenue" id="errorReserva" role="status" aria-live="polite" style="color:var(--color-peligro);"></p>
+    </section>
+
+    <!-- Paso 6: confirmación -->
+    <section id="paso6" class="oculto mt-16 centro">
+      <div style="font-size:52px; margin-top:10px;">✅</div>
+      <h2 class="mt-16">¡Listo, <span id="confNombre"></span>!</h2>
+      <p class="texto-tenue">Tu cita quedó <strong>pendiente de confirmación</strong>. Te contactaremos por WhatsApp para confirmarla.</p>
+      <div class="tarjeta mt-16" id="resumenFinalTarjeta" style="text-align:left;"></div>
+      <div class="tarjeta mt-16 oculto" id="pagoConfirmacion" style="text-align:left;"></div>
+      <p class="texto-tenue mt-16">Código de reserva: <strong id="confCodigo"></strong></p>
+      <a id="btnWaCliente" class="btn btn-whatsapp btn-bloque mt-16 oculto" href="#" target="_blank" rel="noopener">
+        Escribir por WhatsApp
+      </a>
+      <button type="button" class="btn btn-secundario btn-bloque mt-16" id="btnNuevaReserva">Hacer otra reserva</button>
+    </section>
+
+  </div>
+
+  <!-- Barra inferior fija con acciones -->
+  <div class="barra-inferior oculto" id="barraInferior">
+    <div style="display:flex; gap:10px;">
+      <button type="button" class="btn btn-secundario" id="btnAtras" style="flex:0 0 auto;">Atrás</button>
+      <button type="button" class="btn btn-primario btn-bloque" id="btnContinuar">Continuar</button>
+    </div>
+  </div>
+
+  <script>
+    // ------------------------------------------------------------------
+    // ESTADO GLOBAL
+    // ------------------------------------------------------------------
+    var estado = {
+      cfg: null,
+      especialistas: [],
+      servicios: [],
+      pasoActual: 1,
+      seleccion: { servicioId: null, especialistaId: null, fecha: null, hora: null, metodoPago: null },
+      fidelidad: null,
+      beneficioId: null,
+      mesActual: { anio: 0, mes: 0 },
+      cacheMeses: {},           // "anio-mes" -> { "yyyy-MM-dd": ["10:00", ...] }
+      hoy: new Date()
+    };
+
+    var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    var DIAS_CORTOS = ['dom','lun','mar','mié','jué','vie','sáb'];
+    var DIAS_LARGOS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+
+    var PAISES = [
+      { codigo: '591', nombre: 'Bolivia' },
+      { codigo: '54', nombre: 'Argentina' },
+      { codigo: '56', nombre: 'Chile' },
+      { codigo: '51', nombre: 'Perú' },
+      { codigo: '595', nombre: 'Paraguay' },
+      { codigo: '55', nombre: 'Brasil' },
+      { codigo: '57', nombre: 'Colombia' },
+      { codigo: '593', nombre: 'Ecuador' },
+      { codigo: '58', nombre: 'Venezuela' },
+      { codigo: '598', nombre: 'Uruguay' },
+      { codigo: '52', nombre: 'México' },
+      { codigo: '34', nombre: 'España' },
+      { codigo: '1', nombre: 'Estados Unidos' }
+    ];
+
+    function pad2_(n) { return ('0' + n).slice(-2); }
+
+    function formatearPrecio_(n, moneda) {
+      var grupos = String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      if (!moneda) return '$' + grupos;
+      if (moneda === 'BOB' || moneda === 'Bs') return 'Bs ' + grupos;
+      if (moneda === 'CLP') return '$' + grupos;
+      return grupos + ' ' + moneda;
+    }
+
+    // ------------------------------------------------------------------
+    // CARGA INICIAL — una sola llamada a google.script.run
+    // ------------------------------------------------------------------
+    document.addEventListener('DOMContentLoaded', function () {
+      google.script.run
+        .withSuccessHandler(onDatosIniciales_)
+        .withFailureHandler(function (err) {
+          document.getElementById('vistaCargando').innerHTML =
+            '<p style="color:var(--color-peligro)">No se pudo cargar la agenda. Recarga la página.<br><span class="texto-tenue">' + err.message + '</span></p>';
+        })
+        .obtenerDatosIniciales();
+
+      document.getElementById('btnMesAnterior').onclick = function () { cambiarMes_(-1); };
+      document.getElementById('btnMesSiguiente').onclick = function () { cambiarMes_(1); };
+      document.getElementById('btnAtras').onclick = irAtras_;
+      document.getElementById('btnContinuar').onclick = continuar_;
+      document.getElementById('btnNuevaReserva').onclick = reiniciarFlujo_;
+      document.getElementById('inTelefonoLocal').addEventListener('blur', consultarFidelidadCliente_);
+      document.getElementById('inPais').addEventListener('change', consultarFidelidadCliente_);
+    });
+
+    function onDatosIniciales_(datos) {
+      estado.cfg = datos.cfg;
+      estado.especialistas = datos.especialistas;
+      estado.servicios = datos.servicios;
+
+      var etiqueta = estado.cfg.rubro_etiqueta_especialista || 'Especialista';
+      var varios = estado.especialistas.length > 1;
+      document.getElementById('subtitulo').textContent = varios
+        ? 'Reserva tu hora con nuestro equipo'
+        : 'Reserva tu hora con nuestro' + (/a$/.test(etiqueta) ? 'a' : '') + ' ' + etiqueta.toLowerCase();
+      document.getElementById('tituloEspecialista').textContent = varios
+        ? 'Elige quién te atiende'
+        : 'Elige tu ' + etiqueta.toLowerCase();
+
+      inicializarPais_();
+      configurarPagos_();
+      renderServicios_();
+      document.getElementById('vistaCargando').classList.add('oculto');
+      mostrarPaso_(1);
+    }
+
+    // ------------------------------------------------------------------
+    // NAVEGACIÓN ENTRE PASOS
+    // ------------------------------------------------------------------
+    function mostrarPaso_(n) {
+      estado.pasoActual = n;
+      for (var i = 1; i <= 6; i++) {
+        document.getElementById('paso' + i).classList.toggle('oculto', i !== n);
+      }
+      document.querySelectorAll('.paso-punto').forEach(function (el) {
+        var p = Number(el.dataset.paso);
+        el.classList.toggle('hecho', p < n);
+        el.classList.toggle('activo', p === n);
+      });
+
+      var barra = document.getElementById('barraInferior');
+      var btnContinuar = document.getElementById('btnContinuar');
+      var btnAtras = document.getElementById('btnAtras');
+
+      if (n === 1 || n === 6) {
+        barra.classList.add('oculto');
+      } else {
+        barra.classList.remove('oculto');
+        btnAtras.classList.toggle('oculto', n === 1);
+        if (n === 2) { btnContinuar.textContent = 'Continuar'; btnContinuar.disabled = !estado.seleccion.especialistaId; }
+        if (n === 3) { btnContinuar.textContent = 'Continuar'; btnContinuar.disabled = !estado.seleccion.fecha; }
+        if (n === 4) { btnContinuar.textContent = 'Continuar'; btnContinuar.disabled = !estado.seleccion.hora; }
+        if (n === 5) { btnContinuar.textContent = 'Confirmar reserva'; btnContinuar.disabled = false; renderResumenPaso5_(); consultarFidelidadCliente_(); }
+      }
+    }
+
+    function irAtras_() {
+      if (estado.pasoActual > 1) mostrarPaso_(estado.pasoActual - 1);
+    }
+
+    function continuar_() {
+      if (estado.pasoActual === 2) mostrarPaso_(3);
+      else if (estado.pasoActual === 3) mostrarPaso_(4);
+      else if (estado.pasoActual === 4) mostrarPaso_(5);
+      else if (estado.pasoActual === 5) enviarReserva_();
+    }
+
+    // ------------------------------------------------------------------
+    // PASO 1: SERVICIOS
+    // ------------------------------------------------------------------
+    function renderServicios_() {
+      var cont = document.getElementById('listaServicios');
+      cont.innerHTML = '';
+      estado.servicios.forEach(function (s) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'opcion';
+        btn.innerHTML =
+          '<div class="opcion__avatar">' + iniciales_(s.nombre) + '</div>' +
+          '<div class="opcion__cuerpo">' +
+            '<div class="opcion__titulo">' + escapeHtml_(s.nombre) + '</div>' +
+            '<div class="opcion__detalle">' + s.duracion_minutos + ' min' + (s.descripcion ? ' · ' + escapeHtml_(s.descripcion) : '') + '</div>' +
+          '</div>' +
+          '<div class="opcion__precio">' + formatearPrecio_(s.precio, estado.cfg.moneda) + '</div>';
+        btn.onclick = function () { elegirServicio_(s); };
+        cont.appendChild(btn);
+      });
+    }
+
+    function elegirServicio_(servicio) {
+      estado.seleccion.servicioId = servicio.id;
+      estado.seleccion.especialistaId = null;
+      estado.seleccion.fecha = null;
+      estado.seleccion.hora = null;
+      estado.cacheMeses = {};
+      renderEspecialistas_();
+      mostrarPaso_(2);
+    }
+
+    // ------------------------------------------------------------------
+    // PASO 2: ESPECIALISTAS
+    // ------------------------------------------------------------------
+    function renderEspecialistas_() {
+      var servicio = estado.servicios.filter(function (s) { return String(s.id) === String(estado.seleccion.servicioId); })[0];
+      var disponibles = estado.especialistas;
+      if (servicio && String(servicio.especialista_id).toUpperCase() !== 'TODOS') {
+        disponibles = estado.especialistas.filter(function (e) { return String(e.id) === String(servicio.especialista_id); });
+      }
+
+      var cont = document.getElementById('listaEspecialistas');
+      cont.innerHTML = '';
+
+      // Si el servicio quedó apuntando a un especialista inactivo, sin este
+      // aviso el paso 2 aparecía vacío y el cliente no podía avanzar.
+      if (disponibles.length === 0) {
+        var vacio = document.createElement('p');
+        vacio.className = 'texto-tenue';
+        vacio.textContent = 'Este servicio no tiene especialistas disponibles en este momento. Probá con otro servicio.';
+        cont.appendChild(vacio);
+        return;
+      }
+
+      var botones = [];
+      disponibles.forEach(function (e) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'opcion';
+        var avatar = e.foto_url
+          ? '<img src="' + e.foto_url + '" alt="">'
+          : iniciales_(e.nombre);
+        btn.innerHTML =
+          '<div class="opcion__avatar" style="background:' + (e.color || 'var(--color-primario)') + '">' + avatar + '</div>' +
+          '<div class="opcion__cuerpo"><div class="opcion__titulo">' + escapeHtml_(e.nombre) + '</div></div>';
+        btn.onclick = function () { elegirEspecialista_(e, btn, botones); };
+        botones.push(btn);
+        cont.appendChild(btn);
+      });
+
+      // Si solo hay una opción posible, se preselecciona (pero se deja ver el paso).
+      if (disponibles.length === 1) {
+        elegirEspecialista_(disponibles[0], botones[0], botones);
+      }
+    }
+
+    function elegirEspecialista_(especialista, btnSeleccionado, botones) {
+      estado.seleccion.especialistaId = especialista.id;
+      estado.seleccion.fecha = null;
+      estado.seleccion.hora = null;
+      estado.cacheMeses = {};
+      (botones || []).forEach(function (b) { b.classList.toggle('seleccionada', b === btnSeleccionado); });
+      document.getElementById('btnContinuar').disabled = false;
+
+      var hoy = new Date();
+      estado.mesActual = { anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 };
+      cargarMes_();
+    }
+
+    // ------------------------------------------------------------------
+    // PASO 3: CALENDARIO
+    // ------------------------------------------------------------------
+    function claveMes_(anio, mes) { return anio + '-' + mes; }
+
+    function cargarMes_(aviso) {
+      var clave = claveMes_(estado.mesActual.anio, estado.mesActual.mes);
+      renderCalendarioCabecera_();
+      if (estado.cacheMeses[clave]) {
+        renderCalendarioGrilla_(estado.cacheMeses[clave]);
+        document.getElementById('calEstado').textContent = aviso || '';
+        return;
+      }
+      document.getElementById('calGrilla').innerHTML = '';
+      document.getElementById('calEstado').innerHTML = '<span class="cargando-linea"><span class="cargando" style="color:var(--color-primario);"></span> Cargando disponibilidad…</span>';
+      google.script.run
+        .withSuccessHandler(function (mapa) {
+          estado.cacheMeses[clave] = mapa;
+          document.getElementById('calEstado').textContent = aviso || '';
+          renderCalendarioGrilla_(mapa);
+        })
+        .withFailureHandler(function (err) {
+          document.getElementById('calEstado').textContent = 'No se pudo cargar: ' + err.message;
+        })
+        .obtenerMesDisponibilidad(estado.seleccion.especialistaId, estado.seleccion.servicioId, estado.mesActual.anio, estado.mesActual.mes);
+    }
+
+    function cambiarMes_(delta) {
+      var m = estado.mesActual.mes + delta;
+      var a = estado.mesActual.anio;
+      if (m < 1) { m = 12; a--; }
+      if (m > 12) { m = 1; a++; }
+      estado.mesActual = { anio: a, mes: m };
+      cargarMes_();
+    }
+
+    function renderCalendarioCabecera_() {
+      document.getElementById('calMesLabel').textContent = MESES[estado.mesActual.mes - 1] + ' ' + estado.mesActual.anio;
+      var hoy = new Date();
+      var esMesActual = estado.mesActual.anio === hoy.getFullYear() && estado.mesActual.mes === (hoy.getMonth() + 1);
+      document.getElementById('btnMesAnterior').disabled = esMesActual;
+
+      var maxDias = Number(estado.cfg.dias_max_anticipacion) || 60;
+      var maxFecha = new Date(hoy.getTime() + maxDias * 86400000);
+      var primerDiaSiguiente = new Date(estado.mesActual.anio, estado.mesActual.mes, 1);
+      document.getElementById('btnMesSiguiente').disabled = primerDiaSiguiente > maxFecha;
+    }
+
+    function renderCalendarioGrilla_(mapaDisponibilidad) {
+      var grilla = document.getElementById('calGrilla');
+      grilla.innerHTML = '';
+      var anio = estado.mesActual.anio, mes = estado.mesActual.mes;
+      var primerDiaSemana = new Date(anio, mes - 1, 1).getDay(); // 0=domingo
+      var offset = (primerDiaSemana + 6) % 7; // semana empieza lunes
+      var diasEnMes = new Date(anio, mes, 0).getDate();
+      var hoy = new Date();
+      var hoyISO = hoy.getFullYear() + '-' + pad2_(hoy.getMonth() + 1) + '-' + pad2_(hoy.getDate());
+
+      for (var i = 0; i < offset; i++) {
+        var vacio = document.createElement('div');
+        vacio.className = 'calendario__dia vacio';
+        grilla.appendChild(vacio);
+      }
+
+      for (var d = 1; d <= diasEnMes; d++) {
+        var key = anio + '-' + pad2_(mes) + '-' + pad2_(d);
+        var slots = mapaDisponibilidad[key] || [];
+        var fechaObj = new Date(anio, mes - 1, d);
+        var etiquetaFecha = DIAS_LARGOS[fechaObj.getDay()] + ' ' + d + ' de ' + MESES[mes - 1];
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'calendario__dia';
+        btn.textContent = d;
+        btn.setAttribute('aria-label', etiquetaFecha);
+
+        if (key < hoyISO) {
+          btn.classList.add('sin-cupo');
+          btn.disabled = true;
+          btn.setAttribute('aria-label', etiquetaFecha + ', fecha pasada');
+        } else if (slots.length === 0) {
+          btn.classList.add('sin-cupo');
+          btn.disabled = true;
+          btn.setAttribute('aria-label', etiquetaFecha + ', sin horarios disponibles');
+        } else {
+          btn.classList.add('disponible');
+          btn.onclick = (function (key, slots) {
+            return function () { elegirDia_(key, slots); };
+          })(key, slots);
+          btn.setAttribute('aria-pressed', estado.seleccion.fecha === key ? 'true' : 'false');
+          btn.setAttribute('aria-label', etiquetaFecha + ', ' + slots.length + ' horarios disponibles');
+        }
+
+        if (key === hoyISO) {
+          btn.classList.add('hoy');
+          btn.setAttribute('aria-current', 'date');
+        }
+        if (estado.seleccion.fecha === key) btn.classList.add('seleccionado');
+        grilla.appendChild(btn);
+      }
+    }
+
+    function elegirDia_(key, slots) {
+      estado.seleccion.fecha = key;
+      estado.seleccion.hora = null;
+      renderCalendarioGrilla_(estado.cacheMeses[claveMes_(estado.mesActual.anio, estado.mesActual.mes)]);
+      document.getElementById('btnContinuar').disabled = false;
+      renderHoras_(slots);
+    }
+
+    // ------------------------------------------------------------------
+    // PASO 4: HORAS
+    // ------------------------------------------------------------------
+    function renderHoras_(slots) {
+      var partes = estado.seleccion.fecha.split('-');
+      var fechaObj = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+      document.getElementById('fechaElegidaTexto').textContent =
+        DIAS_CORTOS[fechaObj.getDay()] + ' ' + fechaObj.getDate() + ' de ' + MESES[fechaObj.getMonth()];
+
+      var cont = document.getElementById('listaHoras');
+      cont.innerHTML = '';
+      slots.forEach(function (hora) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip';
+        chip.textContent = hora;
+        chip.setAttribute('aria-pressed', estado.seleccion.hora === hora ? 'true' : 'false');
+        if (estado.seleccion.hora === hora) chip.classList.add('seleccionada');
+        chip.onclick = function () {
+          estado.seleccion.hora = hora;
+          document.querySelectorAll('#listaHoras .chip').forEach(function (c) {
+            c.classList.remove('seleccionada');
+            c.setAttribute('aria-pressed', 'false');
+          });
+          chip.classList.add('seleccionada');
+          chip.setAttribute('aria-pressed', 'true');
+          document.getElementById('btnContinuar').disabled = false;
+        };
+        cont.appendChild(chip);
+      });
+    }
+
+    // ------------------------------------------------------------------
+    // PASO 5: DATOS DEL CLIENTE + RESUMEN
+    // ------------------------------------------------------------------
+    function telefonoIngresado_() {
+      var pais = (document.getElementById('inPais') || {}).value || '';
+      var local = (document.getElementById('inTelefonoLocal') || {}).value || '';
+      return String(pais).replace(/\D/g, '') +
+        String(local).replace(/\D/g, '').replace(/^0+/, '');
+    }
+
+    function usaBeneficioEnReserva_() {
+      var f = estado.fidelidad;
+      if (!f || !f.premioDisponible) return false;
+      // El premio solo aplica al teléfono que lo ganó: si el cliente cambia
+      // el número, deja de mostrarse como aplicable de inmediato.
+      if (String(f.telefono || '') !== telefonoIngresado_()) return false;
+      return !!estado.seleccion.servicioId &&
+        String(estado.seleccion.servicioId) === String(f.premioServicioId);
+    }
+
+    function renderResumenPaso5_() {
+      var servicio = estado.servicios.filter(function (s) { return String(s.id) === String(estado.seleccion.servicioId); })[0];
+      var especialista = estado.especialistas.filter(function (e) { return String(e.id) === String(estado.seleccion.especialistaId); })[0];
+      var partes = estado.seleccion.fecha.split('-');
+      var fechaObj = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+      var fechaTexto = DIAS_CORTOS[fechaObj.getDay()] + ' ' + fechaObj.getDate() + ' de ' + MESES[fechaObj.getMonth()];
+
+      var usaBeneficio = usaBeneficioEnReserva_();
+      var metodo = usaBeneficio ? '' : metodoPagoSeleccionado_();
+      estado.beneficioId = usaBeneficio ? estado.fidelidad.beneficioId : null;
+      actualizarVisibilidadPago_();
+
+      var precioHtml = usaBeneficio
+        ? '<strong>Gratis</strong> <span class="texto-tenue">(premio)</span>'
+        : formatearPrecio_(servicio.precio, estado.cfg.moneda);
+
+      document.getElementById('resumenTarjeta').innerHTML =
+        '<div class="resumen-linea"><span>Servicio</span><span>' + escapeHtml_(servicio.nombre) + '</span></div>' +
+        '<div class="resumen-linea"><span>' + escapeHtml_(estado.cfg.rubro_etiqueta_especialista || 'Especialista') + '</span><span>' + escapeHtml_(especialista.nombre) + '</span></div>' +
+        '<div class="resumen-linea"><span>Fecha</span><span>' + fechaTexto + '</span></div>' +
+        '<div class="resumen-linea"><span>Hora</span><span>' + estado.seleccion.hora + '</span></div>' +
+        '<div class="resumen-linea"><span>Precio</span><span>' + precioHtml + '</span></div>' +
+        (metodo ? '<div class="resumen-linea"><span>Pago</span><span>' + (metodo === 'qr' ? 'QR' : 'Efectivo en el local') + '</span></div>' : '');
+
+      renderFidelidadPaso5_();
+    }
+
+    function consultarFidelidadCliente_(alTerminar) {
+      var pais = document.getElementById('inPais').value.replace(/\D/g, '');
+      var local = document.getElementById('inTelefonoLocal').value.replace(/\D/g, '').replace(/^0+/, '');
+      var telefono = pais + local;
+
+      if (local.length < 6 || telefono.length < 8) {
+        estado.fidelidad = null;
+        estado.beneficioId = null;
+        renderFidelidadPaso5_();
+        if (estado.pasoActual === 5) renderResumenPaso5_();
+        if (alTerminar) alTerminar();
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          estado.fidelidad = (res && res.ok && res.activa) ? res : null;
+          if (estado.pasoActual === 5) renderResumenPaso5_();
+          else renderFidelidadPaso5_();
+          if (alTerminar) alTerminar();
+        })
+        .withFailureHandler(function () {
+          estado.fidelidad = null;
+          if (estado.pasoActual === 5) renderResumenPaso5_();
+          else renderFidelidadPaso5_();
+          if (alTerminar) alTerminar();
+        })
+        .consultarFidelidad(telefono);
+    }
+
+    function renderFidelidadPaso5_() {
+      var cont = document.getElementById('fidelidadTarjeta');
+      if (!cont) return;
+
+      var f = estado.fidelidad;
+      if (!f || !f.activa || estado.pasoActual !== 5) {
+        cont.classList.add('oculto');
+        cont.innerHTML = '';
+        return;
+      }
+
+      var html;
+      if (f.premioDisponible) {
+        html = '<h3 class="mt-0">🎁 Tenés un premio</h3>' +
+          '<p class="texto-tenue mb-0">' + escapeHtml_(f.premioDescripcion || 'Premio de fidelidad') + '</p>' +
+          '<p class="texto-tenue mb-0">' + (usaBeneficioEnReserva_()
+            ? '<strong>Se aplica a esta reserva: el servicio no se cobra.</strong>'
+            : 'Elegí ' + escapeHtml_(f.premioServicioNombre || 'el servicio del premio') + ' para usarlo en esta visita.') + '</p>';
+      } else {
+        var visitas = Number(f.visitasDesdePremio) || 0;
+        html = '<h3 class="mt-0">Tarjeta de fidelidad</h3>' +
+          '<p class="texto-tenue mb-0">Llevás <strong>' + visitas + ' de ' + f.meta + '</strong> visitas. ' +
+          (f.faltan === 1
+            ? 'Te falta <strong>1 visita</strong>'
+            : 'Te faltan <strong>' + f.faltan + ' visitas</strong>') +
+          ' para tu ' + escapeHtml_(f.premioDescripcion || 'premio') + '.</p>';
+      }
+
+      cont.innerHTML = html;
+      cont.classList.remove('oculto');
+    }
+
+    function enviarReserva_(omitirConsultaFidelidad) {
+      var nombre = document.getElementById('inNombre').value.trim();
+      var pais = document.getElementById('inPais').value.replace(/\D/g, '');
+      var local = document.getElementById('inTelefonoLocal').value.replace(/\D/g, '').replace(/^0+/, '');
+      var telefono = pais + local;
+      var errorEl = document.getElementById('errorReserva');
+      errorEl.textContent = '';
+
+      if (nombre.length < 2) { errorEl.textContent = 'Ingresa tu nombre.'; return; }
+      if (local.length < 6) { errorEl.textContent = 'Ingresa tu número de WhatsApp (sin código de país).'; return; }
+      if (telefono.length < 8) { errorEl.textContent = 'Ingresa un WhatsApp válido.'; return; }
+
+      // La tarjeta de fidelidad se consulta al salir del campo. Si el cliente
+      // confirma antes de que llegue la respuesta, se espera acá para no
+      // perder el premio que ya tenía ganado.
+      if (!omitirConsultaFidelidad &&
+          (!estado.fidelidad || String(estado.fidelidad.telefono) !== telefono)) {
+        var btnEspera = document.getElementById('btnContinuar');
+        if (btnEspera) {
+          btnEspera.disabled = true;
+          btnEspera.innerHTML = '<span class="cargando"></span>';
+        }
+        consultarFidelidadCliente_(function () { enviarReserva_(true); });
+        return;
+      }
+
+      var usaBeneficio = usaBeneficioEnReserva_() &&
+        estado.fidelidad && String(estado.fidelidad.telefono) === telefono;
+      estado.beneficioId = usaBeneficio ? estado.fidelidad.beneficioId : null;
+      var metodoPago = usaBeneficio ? '' : metodoPagoSeleccionado_();
+      var email = document.getElementById('inEmail').value.trim();
+      var notas = document.getElementById('inNotas').value.trim();
+
+      var btn = document.getElementById('btnContinuar');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="cargando"></span>';
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar reserva';
+          if (!res.ok) {
+            errorEl.textContent = res.error || 'No se pudo crear la reserva.';
+            if (/premio/i.test(res.error || '')) {
+              // El premio se usó en otra pestaña o venció: refrescar la tarjeta
+              // evita que el cliente reintente con un beneficio inválido.
+              consultarFidelidadCliente_();
+            }
+            if (/no está disponible/i.test(res.error || '')) {
+              // El horario se ocupó justo ahora. Además de refrescar el mes,
+              // hay que limpiar fecha y hora: si quedaban seleccionadas, el
+              // usuario podía volver al paso 5 y reenviar la misma hora en loop.
+              estado.seleccion.fecha = null;
+              estado.seleccion.hora = null;
+              document.getElementById('btnContinuar').disabled = true;
+              delete estado.cacheMeses[claveMes_(estado.mesActual.anio, estado.mesActual.mes)];
+              errorEl.textContent = '';
+              mostrarPaso_(3);
+              cargarMes_(res.error || 'Ese horario se acaba de ocupar. Elegí otro.');
+            }
+            return;
+          }
+          mostrarConfirmacion_(res);
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar reserva';
+          errorEl.textContent = 'Error: ' + err.message;
+        })
+        .crearReserva({
+          especialistaId: estado.seleccion.especialistaId,
+          servicioId: estado.seleccion.servicioId,
+          fecha: estado.seleccion.fecha,
+          hora: estado.seleccion.hora,
+          nombre: nombre,
+          telefono: telefono,
+          email: email,
+          notas: notas,
+          metodoPago: metodoPago,
+          beneficioId: estado.beneficioId || ''
+        });
+    }
+
+    // ------------------------------------------------------------------
+    // PASO 6: CONFIRMACIÓN
+    // ------------------------------------------------------------------
+    function mostrarConfirmacion_(res) {
+      var metodo = res.resumen.esBeneficio
+        ? ''
+        : (res.metodoPago || estado.seleccion.metodoPago || '');
+      var etiquetaEsp = estado.cfg.rubro_etiqueta_especialista || 'Especialista';
+
+      document.getElementById('confNombre').textContent = document.getElementById('inNombre').value.trim().split(' ')[0];
+      document.getElementById('confCodigo').textContent = res.codigoReserva;
+      document.getElementById('resumenFinalTarjeta').innerHTML =
+        '<div class="resumen-linea"><span>Servicio</span><span>' + escapeHtml_(res.resumen.servicio) + '</span></div>' +
+        '<div class="resumen-linea"><span>' + escapeHtml_(etiquetaEsp) + '</span><span>' + escapeHtml_(res.resumen.especialista) + '</span></div>' +
+        '<div class="resumen-linea"><span>Fecha</span><span>' + res.resumen.fecha + '</span></div>' +
+        '<div class="resumen-linea"><span>Hora</span><span>' + res.resumen.hora + '</span></div>' +
+        '<div class="resumen-linea"><span>Precio</span><span>' +
+          (res.resumen.esBeneficio
+            ? 'Gratis <span class="texto-tenue">(premio)</span>'
+            : formatearPrecio_(res.resumen.precio, estado.cfg.moneda)) +
+        '</span></div>' +
+        (metodo ? '<div class="resumen-linea"><span>Pago</span><span>' + (metodo === 'qr' ? 'QR' : 'Efectivo en el local') + '</span></div>' : '');
+
+      renderPagoConfirmacion_(metodo);
+
+      if (res.negocioWhatsapp) {
+        var msg = 'Hola! Reservé ' + res.resumen.servicio + ' el ' + res.resumen.fecha + ' a las ' + res.resumen.hora + ' (código ' + res.codigoReserva + ').';
+        if (metodo === 'qr') msg += ' Elegí pago por QR: te envío el comprobante por acá.';
+        else if (metodo === 'efectivo') msg += ' Voy a pagar en efectivo en el local.';
+        msg += ' ¡Gracias!';
+        var btnWa = document.getElementById('btnWaCliente');
+        btnWa.href = 'https://wa.me/' + res.negocioWhatsapp + '?text=' + encodeURIComponent(msg);
+        btnWa.classList.remove('oculto');
+      }
+
+      mostrarPaso_(6);
+    }
+
+    function renderPagoConfirmacion_(metodo) {
+      var cont = document.getElementById('pagoConfirmacion');
+      if (!cont) return;
+
+      var cfg = estado.cfg || {};
+      var direccion = String(cfg.negocio_direccion || '').trim();
+      var partes = [];
+
+      if (metodo === 'qr') {
+        var imagen = String(cfg.pago_qr_imagen || '');
+        var instrucciones = String(cfg.pago_instrucciones || '').trim() ||
+          'Escanea el QR, paga el monto exacto y envía el comprobante por WhatsApp.';
+        partes.push('<h3 class="mt-0">Pago por QR</h3>');
+        if (imagen) {
+          partes.push('<div class="pago-qr"><img src="' + escapeAttr_(imagen) + '" alt="QR de pago"></div>');
+        } else {
+          partes.push('<p class="texto-tenue">Pedí el QR por WhatsApp para completar el pago.</p>');
+        }
+        partes.push('<p class="texto-tenue mb-0">' + escapeHtml_(instrucciones) + '</p>');
+        if (direccion) partes.push('<p class="texto-tenue mb-0">📍 ' + escapeHtml_(direccion) + '</p>');
+      } else if (metodo === 'efectivo') {
+        partes.push('<h3 class="mt-0">Pago en efectivo</h3>');
+        partes.push('<p class="texto-tenue mb-0">Pagás al llegar al local' +
+          (direccion ? ': 📍 ' + escapeHtml_(direccion) : '.') + '</p>');
+      } else if (direccion) {
+        partes.push('<h3 class="mt-0">Ubicación</h3>');
+        partes.push('<p class="texto-tenue mb-0">📍 ' + escapeHtml_(direccion) + '</p>');
+      }
+
+      cont.innerHTML = partes.join('');
+      cont.classList.toggle('oculto', partes.length === 0);
+    }
+
+    /**
+     * "Hacer otra reserva": reinicia el estado en memoria y vuelve al paso 1
+     * SIN recargar la página. location.reload() no es confiable dentro del
+     * iframe de una Web App de Apps Script (puede dejar la vista en blanco),
+     * así que evitamos cualquier navegación real.
+     */
+    function reiniciarFlujo_() {
+      estado.seleccion = { servicioId: null, especialistaId: null, fecha: null, hora: null, metodoPago: null };
+      estado.cacheMeses = {};
+      estado.fidelidad = null;
+      estado.beneficioId = null;
+      document.getElementById('inNombre').value = '';
+      document.getElementById('inTelefonoLocal').value = '';
+      document.getElementById('inEmail').value = '';
+      document.getElementById('inNotas').value = '';
+      document.getElementById('errorReserva').textContent = '';
+      document.getElementById('btnWaCliente').classList.add('oculto');
+      document.getElementById('pagoConfirmacion').classList.add('oculto');
+      document.getElementById('pagoConfirmacion').innerHTML = '';
+      var fidCont = document.getElementById('fidelidadTarjeta');
+      if (fidCont) { fidCont.classList.add('oculto'); fidCont.innerHTML = ''; }
+      configurarPagos_();
+      renderServicios_();
+      mostrarPaso_(1);
+    }
+
+    // ------------------------------------------------------------------
+    // UTILIDADES
+    // ------------------------------------------------------------------
+
+    function inicializarPais_() {
+      var sel = document.getElementById('inPais');
+      if (!sel) return;
+      sel.innerHTML = PAISES.map(function (p) {
+        return '<option value="' + p.codigo + '">' + p.nombre + ' (+' + p.codigo + ')</option>';
+      }).join('');
+
+      var zona = String((estado.cfg && estado.cfg.zona_horaria) || '');
+      var predeterminado = '591';
+      if (/Argentina/i.test(zona)) predeterminado = '54';
+      else if (/Santiago/i.test(zona)) predeterminado = '56';
+      else if (/Lima/i.test(zona)) predeterminado = '51';
+      sel.value = predeterminado;
+    }
+
+    function esVerdadero_(valor) {
+      return ['TRUE', 'SI', 'SÍ', '1'].indexOf(String(valor || '').trim().toUpperCase()) !== -1;
+    }
+
+    function configurarPagos_() {
+      var cfg = estado.cfg || {};
+      var efectivo = esVerdadero_(cfg.pago_efectivo);
+      var qr = esVerdadero_(cfg.pago_qr) && !!String(cfg.pago_qr_imagen || '').trim();
+
+      var campo = document.getElementById('campoPago');
+      var opcionEfectivo = document.getElementById('opcionPagoEfectivo');
+      var opcionQr = document.getElementById('opcionPagoQr');
+      if (!campo || !opcionEfectivo || !opcionQr) return;
+
+      opcionEfectivo.classList.toggle('oculto', !efectivo);
+      opcionQr.classList.toggle('oculto', !qr);
+
+      document.querySelectorAll('input[name="metodoPago"]').forEach(function (radio) {
+        radio.disabled = radio.value === 'efectivo' ? !efectivo : !qr;
+        radio.onchange = actualizarDetallePago_;
+        if (radio.checked && radio.disabled) radio.checked = false;
+      });
+
+      if (!efectivo && !qr) {
+        campo.classList.add('oculto');
+        estado.seleccion.metodoPago = null;
+        return;
+      }
+
+      actualizarVisibilidadPago_();
+      if (!metodoPagoSeleccionado_()) {
+        var predeterminado = efectivo ? 'efectivo' : 'qr';
+        var radio = document.querySelector('input[name="metodoPago"][value="' + predeterminado + '"]');
+        if (radio) radio.checked = true;
+      }
+      actualizarDetallePago_();
+    }
+
+    /** El premio cubre el servicio: no tiene sentido pedir forma de pago. */
+    function actualizarVisibilidadPago_() {
+      var campo = document.getElementById('campoPago');
+      if (!campo) return;
+      var cfg = estado.cfg || {};
+      var efectivo = esVerdadero_(cfg.pago_efectivo);
+      var qr = esVerdadero_(cfg.pago_qr) && !!String(cfg.pago_qr_imagen || '').trim();
+      campo.classList.toggle('oculto', usaBeneficioEnReserva_() || (!efectivo && !qr));
+    }
+
+    function metodoPagoSeleccionado_() {
+      var radio = document.querySelector('input[name="metodoPago"]:checked');
+      return radio ? radio.value : '';
+    }
+
+    function actualizarDetallePago_() {
+      var metodo = metodoPagoSeleccionado_();
+      estado.seleccion.metodoPago = metodo || null;
+
+      document.querySelectorAll('.pago-opcion').forEach(function (opcion) {
+        var radio = opcion.querySelector('input[type="radio"]');
+        opcion.classList.toggle('seleccionada', !!(radio && radio.checked));
+      });
+
+      var cont = document.getElementById('pagoDetalle');
+      if (!cont) return;
+
+      var cfg = estado.cfg || {};
+      var direccion = String(cfg.negocio_direccion || '').trim();
+
+      if (metodo === 'qr') {
+        cont.innerHTML = '<strong>Pago por QR:</strong> al confirmar vas a ver el código QR. Enviá el comprobante por WhatsApp.';
+        cont.classList.remove('oculto');
+      } else if (metodo === 'efectivo') {
+        cont.innerHTML = '<strong>Efectivo en el local:</strong> pagás al llegar' +
+          (direccion ? ' a ' + escapeHtml_(direccion) : '') + '.';
+        cont.classList.remove('oculto');
+      } else {
+        cont.innerHTML = '';
+        cont.classList.add('oculto');
+      }
+
+      if (estado.pasoActual === 5) renderResumenPaso5_();
+    }
+
+    function iniciales_(nombre) {
+      return String(nombre || '').trim().split(/\s+/).slice(0, 2).map(function (p) { return p[0]; }).join('').toUpperCase();
+    }
+
+    function escapeHtml_(str) {
+      var d = document.createElement('div');
+      d.textContent = str == null ? '' : String(str);
+      return d.innerHTML;
+    }
+
+    function escapeAttr_(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  </script>
+
+</body>
+</html>

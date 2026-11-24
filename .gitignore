@@ -1,0 +1,11 @@
+# Dependencias de Node (locales, para tipos/autocompletado del LSP)
+node_modules/
+
+# Credenciales locales de clasp — nunca deben estar en el repo
+.clasprc.json
+
+# Estado local del CLI de Netlify (siteId del entorno, no del repo)
+.netlify/
+
+# Artefactos locales de las pruebas con Playwright (capturas, consola)
+.playwright-mcp/

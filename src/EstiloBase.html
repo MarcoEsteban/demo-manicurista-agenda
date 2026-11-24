@@ -1,0 +1,632 @@
+<style>
+  /* ==========================================================================
+     ESTILOS BASE — "Bosque & Bronce"
+     Compartido entre Index.html (reserva pública) y Admin.html (panel admin).
+     Las variables --color-* se definen en un <style> aparte dentro de cada
+     página (con los valores reales de la hoja Config), acá solo se usan.
+     ========================================================================== */
+
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --color-primario: #4A1F3D;
+    --color-secundario: #C9A227;
+    /* El bronce de marca no llega a 4.5:1 sobre blanco. Para texto usamos una
+       versión oscurecida; si el navegador soporta color-mix, se deriva del
+       color configurado por el negocio. */
+    --color-secundario-texto: #8A6A32;
+    --color-secundario-texto: color-mix(in srgb, var(--color-secundario) 78%, #000);
+    --color-acento: #E8DCC8;
+    --color-texto: #1A1A1A;
+    --color-fondo: #FBFAF7;
+    --color-borde: #E4DDCF;
+    --color-blanco: #FFFFFF;
+    --color-exito: #2E7D4F;
+    --color-alerta: #B3541E;
+    --color-peligro: #A13A3A;
+    --sombra-suave: 0 2px 10px rgba(27, 67, 50, 0.08);
+    --sombra-media: 0 8px 24px rgba(27, 67, 50, 0.14);
+    --radio: 16px;
+    --radio-chico: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* Foco visible: quitar el outline sin reemplazo deja la app inoperable con
+     teclado. El bronce oscuro tiene contraste suficiente sobre fondos claros. */
+  :focus-visible {
+    outline: 3px solid var(--color-secundario-texto);
+    outline-offset: 2px;
+  }
+
+  .encabezado :focus-visible,
+  .btn-primario:focus-visible,
+  .btn-whatsapp:focus-visible {
+    outline-color: #FFFFFF;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--color-fondo);
+    color: var(--color-texto);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3, .display {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    line-height: 1.15;
+    margin: 0 0 6px;
+    color: var(--color-primario);
+  }
+
+  p { margin: 0 0 8px; line-height: 1.5; }
+
+  a { color: var(--color-secundario-texto); }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
+
+  input, select, textarea {
+    font-family: inherit;
+    font-size: 16px; /* evita zoom automático en iOS */
+  }
+
+  .contenedor {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 0 18px 100px;
+  }
+
+  .contenedor--ancho {
+    max-width: 920px;
+  }
+
+  /* ---------- Header ---------- */
+  .encabezado {
+    background: var(--color-primario);
+    color: #fff;
+    padding: 22px 18px 26px;
+    border-radius: 0 0 22px 22px;
+    box-shadow: var(--sombra-media);
+  }
+
+  .encabezado h1 {
+    color: #fff;
+    font-size: 22px;
+  }
+
+  .encabezado .subt {
+    color: var(--color-acento);
+    font-size: 13.5px;
+    opacity: .92;
+  }
+
+  /* ---------- Pasos / breadcrumb ---------- */
+  .pasos {
+    display: flex;
+    gap: 6px;
+    margin-top: 16px;
+  }
+
+  .paso-punto {
+    flex: 1;
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255,255,255,.25);
+    transition: background .25s ease;
+  }
+
+  .paso-punto.activo,
+  .paso-punto.hecho {
+    background: var(--color-secundario);
+  }
+
+  /* ---------- Tarjetas / botones de selección ---------- */
+  .tarjeta {
+    background: var(--color-blanco);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: 16px;
+    box-shadow: var(--sombra-suave);
+    margin-bottom: 12px;
+  }
+
+  .opcion {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    text-align: left;
+    background: var(--color-blanco);
+    border: 1.5px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    transition: border-color .15s ease, transform .1s ease, box-shadow .15s ease;
+  }
+
+  .opcion:active { transform: scale(.99); }
+
+  .opcion.seleccionada {
+    border-color: var(--color-secundario);
+    box-shadow: 0 0 0 3px rgba(176,137,71,.15);
+  }
+
+  .opcion__avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--color-primario);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 17px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .opcion__avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+  .opcion__cuerpo { flex: 1; min-width: 0; }
+
+  .opcion__titulo {
+    font-weight: 600;
+    font-size: 15.5px;
+  }
+
+  .opcion__detalle {
+    font-size: 13px;
+    color: #6b6b6b;
+    margin-top: 2px;
+  }
+
+  .opcion__precio {
+    font-weight: 600;
+    color: var(--color-secundario-texto);
+    font-size: 14.5px;
+    white-space: nowrap;
+  }
+
+  /* ---------- Botones ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 22px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 15px;
+    transition: filter .15s ease, transform .1s ease;
+  }
+
+  .btn:active { transform: scale(.98); }
+
+  .btn-primario {
+    background: var(--color-primario);
+    color: #fff;
+  }
+
+  .btn-primario:hover { filter: brightness(1.08); }
+
+  .btn-secundario {
+    background: var(--color-acento);
+    color: var(--color-primario);
+  }
+
+  .btn-whatsapp {
+    background: #25D366;
+    color: #fff;
+  }
+
+  .btn-peligro {
+    background: transparent;
+    color: var(--color-peligro);
+    border: 1.5px solid var(--color-peligro);
+  }
+
+  .btn-texto {
+    background: none;
+    color: var(--color-primario);
+    padding: 8px 4px;
+    font-weight: 600;
+  }
+
+  .btn-bloque { width: 100%; }
+
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ---------- Barra inferior fija ---------- */
+  .barra-inferior {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: var(--color-blanco);
+    border-top: 1px solid var(--color-borde);
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    box-shadow: 0 -6px 20px rgba(0,0,0,.06);
+    z-index: 30;
+  }
+
+  /* ---------- Calendario visual ---------- */
+  .calendario__nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .calendario__mes {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 17px;
+    text-transform: capitalize;
+    color: var(--color-primario);
+  }
+
+  .calendario__flecha {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--color-acento);
+    color: var(--color-primario);
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .calendario__flecha:disabled { opacity: .3; }
+
+  .calendario__grilla-cabecera,
+  .calendario__grilla {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+  }
+
+  .calendario__grilla-cabecera span {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #8a8a8a;
+    padding-bottom: 4px;
+  }
+
+  .calendario__dia {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--color-blanco);
+    border: 1px solid var(--color-borde);
+    color: var(--color-texto);
+    position: relative;
+  }
+
+  .calendario__dia.vacio { border: none; background: transparent; }
+
+  .calendario__dia.disponible {
+    border-color: var(--color-secundario);
+    color: var(--color-primario);
+    font-weight: 600;
+  }
+
+  .calendario__dia.disponible::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--color-secundario);
+  }
+
+  .calendario__dia.sin-cupo {
+    color: #6f6a5f;
+    background: #f4f2ec;
+  }
+
+  /* Hoy se marca aparte del día seleccionado para no perder la referencia. */
+  .calendario__dia.hoy {
+    box-shadow: inset 0 0 0 2px var(--color-primario);
+  }
+
+  .calendario__dia.seleccionado {
+    background: var(--color-primario);
+    border-color: var(--color-primario);
+    color: #fff;
+  }
+
+  .calendario__dia.seleccionado::after { background: #fff; }
+
+  .calendario__dia:disabled { cursor: default; }
+
+  /* ---------- Chips de hora ---------- */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-borde);
+    background: var(--color-blanco);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--color-primario);
+  }
+
+  .chip.seleccionada {
+    background: var(--color-primario);
+    border-color: var(--color-primario);
+    color: #fff;
+  }
+
+  /* ---------- Formularios ---------- */
+  .campo { margin-bottom: 14px; }
+
+  .campo label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--color-primario);
+  }
+
+  .campo input,
+  .campo textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: var(--radio-chico);
+    border: 1.5px solid var(--color-borde);
+    background: var(--color-blanco);
+    color: var(--color-texto);
+  }
+
+  .campo input:focus,
+  .campo textarea:focus {
+    outline: none;
+    border-color: var(--color-secundario);
+  }
+
+  .campo textarea { resize: vertical; min-height: 70px; }
+
+  /* ---------- Campo de fecha en español (dd/mm/aaaa) ---------- */
+  .campo-fecha {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .campo-fecha input[type="text"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    letter-spacing: .02em;
+  }
+
+  .campo-fecha__btn {
+    flex: 0 0 auto;
+    width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radio-chico);
+    border: 1.5px solid var(--color-borde);
+    background: var(--color-blanco);
+    color: var(--color-primario);
+    cursor: pointer;
+  }
+
+  .campo-fecha__btn:hover { border-color: var(--color-secundario); }
+
+  .campo-fecha__btn:focus-visible {
+    outline: 2px solid var(--color-secundario);
+    outline-offset: 2px;
+  }
+
+  .campo-fecha__nativo {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    border: 0;
+    padding: 0;
+  }
+
+  .campo-fecha input[aria-invalid="true"] { border-color: var(--color-peligro); }
+
+  /* ---------- WhatsApp con código de país ---------- */
+  .campo-tel {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .campo-tel select {
+    flex: 0 0 auto;
+    max-width: 48%;
+    padding: 12px 10px;
+    border: 1.5px solid var(--color-borde);
+    border-radius: var(--radio-chico);
+    background: var(--color-blanco);
+    color: var(--color-texto);
+    font-size: 14px;
+  }
+
+  .campo-tel select:focus {
+    outline: none;
+    border-color: var(--color-secundario);
+  }
+
+  .campo-tel input { flex: 1 1 auto; min-width: 0; }
+
+  .campo__ayuda {
+    margin-top: 5px;
+    color: #6b6b6b;
+    font-size: 12px;
+  }
+
+  /* ---------- Formas de pago ---------- */
+  .pago-opciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .pago-opcion {
+    position: relative;
+    display: block;
+    padding: 13px 14px 13px 40px;
+    border: 1.5px solid var(--color-borde);
+    border-radius: 12px;
+    background: var(--color-blanco);
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+
+  .pago-opcion:hover { border-color: var(--color-secundario); }
+
+  .pago-opcion.seleccionada {
+    border-color: var(--color-primario);
+    background: #FBF9F4;
+    box-shadow: var(--sombra-suave);
+  }
+
+  .pago-opcion input {
+    position: absolute;
+    top: 15px;
+    left: 14px;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--color-primario);
+  }
+
+  .pago-opcion__texto { display: block; min-width: 0; }
+
+  .pago-opcion__titulo {
+    display: block;
+    color: var(--color-primario);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .pago-opcion__detalle {
+    display: block;
+    margin-top: 2px;
+    color: #6b6b6b;
+    font-size: 11.5px;
+  }
+
+  .pago-detalle {
+    margin-top: 10px;
+    padding: 12px 14px;
+    border: 1px dashed var(--color-borde);
+    border-radius: 12px;
+    background: #FBF9F4;
+    color: #6b6b6b;
+    font-size: 13px;
+  }
+
+  .pago-qr { margin: 10px 0 6px; text-align: center; }
+
+  .pago-qr img {
+    width: 100%;
+    max-width: 240px;
+    border: 1px solid var(--color-borde);
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  @media (max-width: 380px) {
+    .pago-opciones { grid-template-columns: 1fr; }
+    .campo-tel { flex-wrap: wrap; }
+    .campo-tel select { max-width: none; width: 100%; }
+  }
+
+  /* ---------- Resumen ---------- */
+  .resumen-linea {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--color-borde);
+    font-size: 14.5px;
+  }
+
+  .resumen-linea:last-child { border-bottom: none; }
+
+  .resumen-linea span:first-child { color: #6b6b6b; }
+  .resumen-linea span:last-child { font-weight: 600; }
+
+  /* ---------- Estados / badges ---------- */
+  .badge {
+    display: inline-block;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+
+  .badge-pendiente { background: #FCEFDD; color: var(--color-alerta); }
+  .badge-confirmada { background: #DFF1E6; color: var(--color-exito); }
+  .badge-completada { background: #E4E4E4; color: #555; }
+  .badge-cancelada { background: #F6E1E1; color: var(--color-peligro); }
+
+  /* ---------- Utilidades ---------- */
+  .centro { text-align: center; }
+  .mt-0 { margin-top: 0; } .mt-8 { margin-top: 8px; } .mt-16 { margin-top: 16px; } .mt-24 { margin-top: 24px; }
+  .mb-0 { margin-bottom: 0; }
+  .oculto { display: none !important; }
+  .texto-tenue { color: #6b6b6b; font-size: 13px; }
+  /* currentColor (no un blanco fijo) para que se vea también en botones
+     claros/transparentes como .btn-secundario y .btn-peligro, no solo en
+     los de fondo oscuro. */
+  .cargando {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2.5px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    opacity: .85;
+    animation: girar .7s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  .cargando-linea {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  @media (min-width: 640px) {
+    .contenedor { padding-left: 24px; padding-right: 24px; }
+    .barra-inferior > div { max-width: 560px; margin: 0 auto; }
+  }
+</style>
