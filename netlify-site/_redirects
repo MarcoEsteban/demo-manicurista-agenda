@@ -1,0 +1,11 @@
+# Agenda de reservas (manicurista) — Netlify (sitio estático, sin build)
+#
+# /       -> app pública de reservas
+# /admin  -> panel de administración
+#
+# authuser=0: evita que el multi-login de Google reescriba la URL
+# con /u/N/ y rompa la Web App ("No se pudo abrir el archivo...").
+# 302: redirect temporal para que el navegador no cachee el destino.
+
+/admin  https://script.google.com/macros/s/AKfycbyMd6bS9Sq0XgY3RlCYslTMjOWcYodOqYWVUzgBdlmqyNRb_yZxQepgOyy-buo2LR1X/exec?page=admin&authuser=0  302
+/       https://script.google.com/macros/s/AKfycbyMd6bS9Sq0XgY3RlCYslTMjOWcYodOqYWVUzgBdlmqyNRb_yZxQepgOyy-buo2LR1X/exec?authuser=0            302

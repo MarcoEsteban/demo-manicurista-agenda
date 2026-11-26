@@ -1528,3 +1528,13 @@ test('sembrarDemo crea el negocio de ejemplo completo y es idempotente', () => {
   assert.equal(backend.hojas.get('Horarios').__data.length, 16);
   assert.equal(backend.hojas.get('Reservas').__data.length, 13);
 });
+
+test('asegurarEstructura_ prepara la planilla recién creada', () => {
+  const backend = cargarBackend({ hojas: {} });
+
+  assert.equal(backend.ctx.asegurarEstructura_(), true);
+  for (const nombre of ['Config', 'Especialistas', 'Servicios', 'Horarios', 'Bloqueos', 'Reservas', 'DiasEspeciales', 'Fidelidad', 'Beneficios']) {
+    assert.ok(backend.hojas.get(nombre), 'falta la hoja ' + nombre);
+  }
+  assert.equal(backend.ctx.asegurarEstructura_(), false);
+});

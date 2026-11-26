@@ -1,0 +1,8 @@
+# Admin de la agenda (manicurista) — sitio separado
+#
+# Cualquier ruta de este subdominio va al panel de Apps Script.
+# authuser=0 evita el rewrite /u/N/ del multi-login de Google.
+# 302 para que el navegador no cachee el destino.
+
+/   https://script.google.com/macros/s/AKfycbyMd6bS9Sq0XgY3RlCYslTMjOWcYodOqYWVUzgBdlmqyNRb_yZxQepgOyy-buo2LR1X/exec?page=admin&authuser=0  302
+/*  https://script.google.com/macros/s/AKfycbyMd6bS9Sq0XgY3RlCYslTMjOWcYodOqYWVUzgBdlmqyNRb_yZxQepgOyy-buo2LR1X/exec?page=admin&authuser=0  302

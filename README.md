@@ -17,6 +17,21 @@ Agenda de turnos para un studio de uñas con panel de administración sobre **Go
 
 Es idempotente: solo completa las hojas vacías, así que se puede ejecutar más de una vez sin duplicar datos.
 
+## Demo online
+
+- **Reservas + panel (Netlify)**: <https://demo-manicurista-agenda.netlify.app>
+  `/` va a la app pública de reservas y `/admin` al panel de administración.
+- **Panel en dominio propio**: <https://demo-manicurista-agenda-admin.netlify.app>
+- **Web App (Apps Script)**: <https://script.google.com/macros/s/AKfycbyMd6bS9Sq0XgY3RlCYslTMjOWcYodOqYWVUzgBdlmqyNRb_yZxQepgOyy-buo2LR1X/exec>
+
+Los sitios de Netlify no tienen build: `netlify-site/_redirects` y
+`netlify-site-admin/_redirects` redirigen a la Web App con `authuser=0` para
+evitar el reescritura de URL del multi-login de Google.
+
+La **primera visita** debe hacerla la cuenta dueña del script: Google pide
+autorizar los permisos de Sheets y Drive una vez. Después la URL queda
+pública para cualquiera.
+
 ## Estructura
 
 ```
@@ -30,6 +45,8 @@ src/
 scripts/
   deploy.mjs       Push + deploy conservando la URL a partir del segundo deploy.
 tests/             Tests de lógica pura con Node.
+netlify-site/      _redirects de Netlify hacia la app pública.
+netlify-site-admin/_redirects de Netlify hacia el panel.
 ```
 
 > **Regla de oro de Apps Script**: el JavaScript del cliente **no puede vivir en un `.js`**. Todo archivo `.js` se ejecuta en el servidor. El código de navegador va dentro de archivos `.html` incluidos con `include()`.
@@ -51,6 +68,10 @@ sembrarDemo()
 ```
 
 Autorizá los permisos cuando lo pida. Eso crea las hojas, la configuración, el catálogo y las reservas de ejemplo. Si preferís una hoja limpia, ejecutá `setup()` en su lugar.
+
+La Web App prepara sola la estructura si llega a una planilla recién creada
+(`asegurarEstructura_()` dentro de `doGet`), pero nunca carga datos de demo:
+ese paso es manual y queda en `sembrarDemo()`.
 
 ## Desarrollo
 

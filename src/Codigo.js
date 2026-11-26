@@ -126,8 +126,26 @@ var BLOQUEO_ADMIN_SEGUNDOS = 300;
 // PUNTO DE ENTRADA WEB APP
 // ----------------------------------------------------------------------------
 
+/**
+ * Crea las hojas y la configuración por defecto si la planilla todavía no
+ * fue inicializada. Devuelve `true` si preparó algo.
+ *
+ * Se llama desde `doGet`: así la primera visita (siempre de la cuenta dueña)
+ * no falla por una hoja faltante. Solo estructura, nunca datos de demo.
+ */
+function asegurarEstructura_() {
+  var ss = ss_();
+  if (ss.getSheetByName(SHEET_NAMES.CONFIG)) return false;
+  setup();
+  return true;
+}
+
 function doGet(e) {
   var params = (e && e.parameter) || {};
+
+  // Primera visita sobre una planilla recién creada: prepara la estructura
+  // sola. No carga datos de demo (eso lo hace sembrarDemo()).
+  asegurarEstructura_();
 
   // Ruta del manifest "PWA-lite" (ver README para limitaciones reales).
   if (params.manifest) {
