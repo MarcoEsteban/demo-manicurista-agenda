@@ -1501,6 +1501,14 @@ test('sembrarDemo crea el negocio de ejemplo completo y es idempotente', () => {
   assert.equal(cfg.fidelidad_visitas_meta, '5');
   assert.equal(cfg.fidelidad_servicio_id, '1');
 
+  // La clienta con 5 visitas completadas ya tiene un premio disponible.
+  const fidelidad = backend.hojas.get('Fidelidad').__data;
+  const maria = fidelidad.find((f) => String(f[0]).includes('71234567'));
+  assert.ok(maria);
+  assert.equal(Number(maria[2]), 5);
+  assert.equal(String(maria[6]), 'TRUE');
+  assert.equal(backend.hojas.get('Beneficios').__data.length, 2); // header + 1 premio
+
   // Todas las reservas caen en día hábil (martes a sábado).
   const reservas = backend.hojas.get('Reservas').__data.slice(1);
   for (const fila of reservas) {
