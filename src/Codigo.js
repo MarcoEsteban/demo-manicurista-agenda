@@ -80,7 +80,7 @@ var HOJAS_REQUERIDAS = [
  */
 var CONFIG_DEFAULT = {
   negocio_nombre: 'Studio Manicura',
-  negocio_whatsapp: '70012345',
+  negocio_whatsapp: '59170012345',
   negocio_direccion: 'Av. Las Palmas 456, entre 2do y 3er anillo · Santa Cruz de la Sierra',
   moneda: 'BOB',
   zona_horaria: 'America/La_Paz',
@@ -2643,12 +2643,21 @@ function sembrarDemo() {
   var reservas = sembrarReservasDemo_(cfg, catalogo);
 
   var servicioPremio = catalogo.servicios['Manicura clásica'];
-  guardarClavesConfig_({
+  var valoresDemo = {
     fidelidad_activa: servicioPremio ? 'TRUE' : 'FALSE',
     fidelidad_visitas_meta: '5',
     fidelidad_servicio_id: servicioPremio ? String(servicioPremio.id) : '',
     fidelidad_vigencia_dias: '180'
-  });
+  };
+
+  // El WhatsApp necesita el código de país para que wa.me/ funcione. Solo se
+  // completa si sigue vacío o con el valor viejo sin prefijo.
+  var whatsappActual = String(cfg.negocio_whatsapp || '').trim();
+  if (!whatsappActual || whatsappActual === '70012345') {
+    valoresDemo.negocio_whatsapp = '59170012345';
+  }
+
+  guardarClavesConfig_(valoresDemo);
   limpiarCacheTotal();
 
   try {

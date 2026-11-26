@@ -243,9 +243,14 @@
 
       var etiqueta = estado.cfg.rubro_etiqueta_especialista || 'Especialista';
       var varios = estado.especialistas.length > 1;
-      document.getElementById('subtitulo').textContent = varios
-        ? 'Reserva tu hora con nuestro equipo'
-        : 'Reserva tu hora con nuestro' + (/a$/.test(etiqueta) ? 'a' : '') + ' ' + etiqueta.toLowerCase();
+      // En femenino hay que REEMPLAZAR la 'o' de "nuestro", no sumar una 'a':
+      // con eso salía "nuestrao manicurista".
+      var sujeto = /a$/.test(etiqueta) ? 'nuestra' : 'nuestro';
+      document.getElementById('subtitulo').textContent = !estado.especialistas.length
+        ? 'Reserva tu hora online'
+        : varios
+          ? 'Reserva tu hora con nuestro equipo'
+          : 'Reserva tu hora con ' + sujeto + ' ' + etiqueta.toLowerCase();
       document.getElementById('tituloEspecialista').textContent = varios
         ? 'Elige quién te atiende'
         : 'Elige tu ' + etiqueta.toLowerCase();

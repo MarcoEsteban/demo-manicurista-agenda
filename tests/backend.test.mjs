@@ -1500,6 +1500,8 @@ test('sembrarDemo crea el negocio de ejemplo completo y es idempotente', () => {
   assert.equal(cfg.fidelidad_activa, 'TRUE');
   assert.equal(cfg.fidelidad_visitas_meta, '5');
   assert.equal(cfg.fidelidad_servicio_id, '1');
+  // El WhatsApp necesita el código de país para que wa.me/ funcione.
+  assert.equal(String(cfg.negocio_whatsapp), '59170012345');
 
   // La clienta con 5 visitas completadas ya tiene un premio disponible.
   const fidelidad = backend.hojas.get('Fidelidad').__data;
@@ -1537,4 +1539,14 @@ test('asegurarEstructura_ prepara la planilla recién creada', () => {
     assert.ok(backend.hojas.get(nombre), 'falta la hoja ' + nombre);
   }
   assert.equal(backend.ctx.asegurarEstructura_(), false);
+});
+
+test('sembrarDemo no pisa un WhatsApp que ya tiene número propio', () => {
+  const hojas = { Config: configBase({ negocio_whatsapp: '59177777777' }) };
+  const backend = cargarBackend({ hojas });
+
+  backend.ctx.sembrarDemo();
+
+  const cfg = backend.ctx.getConfig_();
+  assert.equal(String(cfg.negocio_whatsapp), '59177777777');
 });
